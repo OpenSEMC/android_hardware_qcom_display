@@ -27,6 +27,11 @@ ifeq ($(TARGET_BOARD_PLATFORM), msm8960)
     common_flags += -DUSE_FENCE_SYNC
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM), msm8660)
+    common_flags += -DUSE_FENCE_SYNC
+    common_flags += -DTWO_FB_DEVICES
+endif
+
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
     common_flags += -D__ARM_HAVE_NEON
 endif
