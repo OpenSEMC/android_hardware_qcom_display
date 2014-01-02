@@ -24,6 +24,9 @@
 #include <sys/ioctl.h>
 #include <cutils/properties.h>
 
+//OLD_ION_API
+#include <linux/android_pmem.h>
+
 #include "gr.h"
 #include "gpu.h"
 #include "memalloc.h"
