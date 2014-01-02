@@ -25,6 +25,10 @@ ifneq ($(filter msm8974 msm8x74 msm8226 msm8x26,$(TARGET_BOARD_PLATFORM)),)
     common_flags += -DMDSS_TARGET
 endif
 
+ifneq ($(filter msm8960,$(TARGET_BOARD_PLATFORM)),)
+    common_flags += -DUSE_GENLOCK
+endif
+
 common_deps  :=
 kernel_includes :=
 
