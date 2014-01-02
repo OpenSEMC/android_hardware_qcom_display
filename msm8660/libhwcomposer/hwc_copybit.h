@@ -21,7 +21,7 @@
 #define HWC_COPYBIT_H
 #include "hwc_utils.h"
 
-#define NUM_RENDER_BUFFERS 3
+#define NUM_RENDER_BUFFERS 2
 
 namespace qhwc {
 
@@ -49,8 +49,7 @@ private:
     struct copybit_device_t *mEngine;
     // Helper functions for copybit composition
     int  drawLayerUsingCopybit(hwc_context_t *dev, hwc_layer_1_t *layer,
-                                       private_handle_t *renderBuffer, 
-                                       int renderTransform, int dpy);
+                                       private_handle_t *renderBuffer, int dpy);
     bool canUseCopybitForYUV (hwc_context_t *ctx);
     bool canUseCopybitForRGB (hwc_context_t *ctx,
                                      hwc_display_contents_1_t *list, int dpy);
@@ -78,8 +77,9 @@ private:
     // Index of the current intermediate render buffer
     int mCurRenderBufferIndex;
 
-    // Release FDs of the intermediate render buffer
-    int mRelFd[NUM_RENDER_BUFFERS];
+    //These are the the release FDs of the T-2 and T-1 round
+    //We wait on the T-2 fence
+    int mRelFd[2];
 
     //Dynamic composition threshold for deciding copybit usage.
     double mDynThreshold;

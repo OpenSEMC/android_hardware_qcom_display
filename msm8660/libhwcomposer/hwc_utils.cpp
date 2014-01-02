@@ -202,6 +202,9 @@ void initContext(hwc_context_t *ctx)
     ctx->mMDP.version = qdutils::MDPVersion::getInstance().getMDPVersion();
     ctx->mMDP.hasOverlay = qdutils::MDPVersion::getInstance().hasOverlay();
     ctx->mMDP.panel = qdutils::MDPVersion::getInstance().getPanelType();
+    overlay::Overlay::initOverlay();
+    ctx->mOverlay = overlay::Overlay::getInstance();
+    ctx->mRotMgr = new RotMgr();
 
     //Is created and destroyed only once for primary
     //For external it could get created and destroyed multiple times depending
@@ -736,8 +739,6 @@ int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy,
            list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET) {
             //Populate releaseFenceFds.
             if(UNLIKELY(swapzero)) {
-                list->hwLayers[i].releaseFenceFd = -1;
-            } else if(fd >= 0) {
                 list->hwLayers[i].releaseFenceFd = -1;
             } else if(list->hwLayers[i].releaseFenceFd < 0) {
                 //If rotator has not already populated this field.

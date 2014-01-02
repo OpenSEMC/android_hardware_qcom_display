@@ -1,11 +1,11 @@
 #Common headers
-common_includes := hardware/qcom/display/msm8660/libgralloc
-common_includes += hardware/qcom/display/msm8660/liboverlay
-common_includes += hardware/qcom/display/msm8660/libcopybit
-common_includes += hardware/qcom/display/msm8660/libqdutils
-common_includes += hardware/qcom/display/msm8660/libhwcomposer
-common_includes += hardware/qcom/display/msm8660/libexternal
-common_includes += hardware/qcom/display/msm8660/libqservice
+common_includes := hardware/qcom/display/msm8960/libgralloc
+common_includes += hardware/qcom/display/msm8960/liboverlay
+common_includes += hardware/qcom/display/msm8960/libcopybit
+common_includes += hardware/qcom/display/msm8960/libqdutils
+common_includes += hardware/qcom/display/msm8960/libhwcomposer
+common_includes += hardware/qcom/display/msm8960/libexternal
+common_includes += hardware/qcom/display/msm8960/libqservice
 
 common_header_export_path := qcom/display
 
@@ -14,7 +14,7 @@ common_libs := liblog libutils libcutils libhardware
 
 #Common C flags
 common_flags := -DDEBUG_CALC_FPS -Wno-missing-field-initializers
-common_flags += -Werror
+common_flags += -Werror -Wno-unused-parameter
 
 ifeq ($(ARCH_ARM_HAVE_NEON),true)
     common_flags += -D__ARM_HAVE_NEON

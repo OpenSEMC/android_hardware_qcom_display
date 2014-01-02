@@ -43,7 +43,6 @@ public:
     //Factory method that returns a low-res or high-res version
     static IFBUpdate *getObject(const int& width, const int& dpy);
 
-    bool isUsed() { return mModeOn; };
 protected:
     const int mDpy; // display to update
     bool mModeOn; // if prepare happened
