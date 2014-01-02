@@ -674,6 +674,19 @@ static int finish_copybit(struct copybit_device_t *dev)
     return status;
 }
 
+static int finish_copybit_compat(struct copybit_device_t *dev)
+{
+    struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
+    if (!ctx)
+        return COPYBIT_FAILURE;
+
+    int status = COPYBIT_SUCCESS;
+    pthread_mutex_lock(&ctx->wait_cleanup_lock);
+    status = finish_copybit_internal(dev);
+    pthread_mutex_unlock(&ctx->wait_cleanup_lock);
+    return status;
+}
+
 static int clear_copybit(struct copybit_device_t *dev,
                          struct copybit_image_t const *buf,
                          struct copybit_rect_t *rect)
@@ -1524,7 +1537,7 @@ static int open_copybit(const struct hw_module_t* module, const char* name,
     ctx->device.get = get;
     ctx->device.blit = blit_copybit;
     ctx->device.stretch = stretch_copybit;
-    ctx->device.finish = finish_copybit;
+    ctx->device.finish = finish_copybit_compat;
     ctx->device.flush_get_fence = flush_get_fence_copybit;
     ctx->device.clear = clear_copybit;
 
