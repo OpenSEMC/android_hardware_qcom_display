@@ -138,7 +138,7 @@ static int hwc_prepare_primary(hwc_composer_device_1 *dev,
         hwc_display_contents_1_t *list) {
     hwc_context_t* ctx = (hwc_context_t*)(dev);
     const int dpy = HWC_DISPLAY_PRIMARY;
-    if(UNLIKELY(!ctx->mBasePipeSetup))
+    if(ctx->mMDP.version >= qdutils::MDP_V4_2 && UNLIKELY(!ctx->mBasePipeSetup))
         setupBasePipe(ctx);
     if (LIKELY(list && list->numHwLayers > 1) &&
             ctx->dpyAttr[dpy].isActive) {
@@ -147,17 +147,12 @@ static int hwc_prepare_primary(hwc_composer_device_1 *dev,
         hwc_layer_1_t *fbLayer = &list->hwLayers[last];
         if(fbLayer->handle) {
             setListStats(ctx, list, dpy);
-            int fbZOrder = ctx->mMDPComp[dpy]->prepare(ctx, list);
-            if(fbZOrder >= 0)
-                ctx->mFBUpdate[dpy]->prepare(ctx, list, fbZOrder);
-
-            /* Temporarily commenting out C2D until we support partial
-               copybit composition for mixed mode MDP
+            if(ctx->mMDPComp[dpy]->prepare(ctx, list) < 0)
+                ctx->mFBUpdate[dpy]->prepare(ctx, list, 0);
 
             // Use Copybit, when MDP comp fails
-            if((fbZOrder >= 0) && ctx->mCopyBit[dpy])
+            if(ctx->mCopyBit[dpy])
                 ctx->mCopyBit[dpy]->prepare(ctx, list, dpy);
-            */
         }
     }
     return 0;
@@ -177,16 +172,12 @@ static int hwc_prepare_external(hwc_composer_device_1 *dev,
             if(fbLayer->handle) {
                 ctx->mExtDispConfiguring = false;
                 setListStats(ctx, list, dpy);
-                int fbZOrder = ctx->mMDPComp[dpy]->prepare(ctx, list);
-                if(fbZOrder >= 0)
-                    ctx->mFBUpdate[dpy]->prepare(ctx, list, fbZOrder);
+                if(ctx->mMDPComp[dpy]->prepare(ctx, list) < 0)
+                    ctx->mFBUpdate[dpy]->prepare(ctx, list, 0);
 
-                /* Temporarily commenting out C2D until we support partial
-                   copybit composition for mixed mode MDP
-
-                if((fbZOrder >= 0) && ctx->mCopyBit[dpy])
+                // Use Copybit, when MDP comp fails
+                if(ctx->mCopyBit[dpy])
                     ctx->mCopyBit[dpy]->prepare(ctx, list, dpy);
-                */
             }
         } else {
             // External Display is in Pause state.
@@ -371,10 +362,15 @@ static int hwc_set_primary(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
         //TODO We dont check for SKIP flag on this layer because we need PAN
         //always. Last layer is always FB
-        private_handle_t *hnd = (private_handle_t *)fbLayer->handle;
+        private_handle_t *hnd;
         if(copybitDone) {
             hnd = ctx->mCopyBit[dpy]->getCurrentRenderBuffer();
+        } else {
+            hnd = (private_handle_t *)ctx->mMDPComp[dpy]->getFbHandle();
+            if (!hnd)
+                hnd = (private_handle_t *)fbLayer->handle;
         }
+        ctx->mMDPComp[dpy]->cacheFbHandle((buffer_handle_t)hnd);
 
         if(hnd) {
             if (!ctx->mFBUpdate[dpy]->draw(ctx, hnd)) {
@@ -418,10 +414,15 @@ static int hwc_set_external(hwc_context_t *ctx,
             ret = -1;
         }
 
-        private_handle_t *hnd = (private_handle_t *)fbLayer->handle;
+        private_handle_t *hnd;
         if(copybitDone) {
             hnd = ctx->mCopyBit[dpy]->getCurrentRenderBuffer();
+        } else {
+            hnd = (private_handle_t *)ctx->mMDPComp[dpy]->getFbHandle();
+            if (!hnd)
+                hnd = (private_handle_t *)fbLayer->handle;
         }
+        ctx->mMDPComp[dpy]->cacheFbHandle((buffer_handle_t)hnd);
 
         if(hnd) {
             if (!ctx->mFBUpdate[dpy]->draw(ctx, hnd)) {

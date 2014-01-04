@@ -270,11 +270,11 @@ int gpu_context_t::alloc_impl(int w, int h, int format, int usage,
 
     if ((ssize_t)size <= 0)
         return -EINVAL;
-
+        
     if ((usage & (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PRIVATE_CP_BUFFER))
               == (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PRIVATE_CP_BUFFER))
         size += 8192;
-
+        
     size = (bufferSize >= size)? bufferSize : size;
 
     // All buffers marked as protected or for external

@@ -34,8 +34,6 @@
 
 #include <hardware/hardware.h>
 #include <hardware/gralloc.h>
-
-//OLD_ION_API
 #include <linux/android_pmem.h>
 
 #include "gralloc_priv.h"

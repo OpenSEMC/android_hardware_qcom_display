@@ -192,22 +192,22 @@ static int open_copybit(const struct hw_module_t* module, const char* name,
                         struct hw_device_t** device);
 
 static struct hw_module_methods_t copybit_module_methods = {
-    .open = open_copybit
+open:  open_copybit
 };
 
 /*
  * The COPYBIT Module
  */
 struct copybit_module_t HAL_MODULE_INFO_SYM = {
-    .common = {
-        .tag = HARDWARE_MODULE_TAG,
-        .version_major = 1,
-        .version_minor = 0,
-        .id = COPYBIT_HARDWARE_MODULE_ID,
-        .name = "QCT COPYBIT C2D 2.0 Module",
-        .author = "Qualcomm",
-        .methods = &copybit_module_methods
-    }
+common: {
+tag: HARDWARE_MODULE_TAG,
+     version_major: 1,
+     version_minor: 0,
+     id: COPYBIT_HARDWARE_MODULE_ID,
+     name: "QCT COPYBIT C2D 2.0 Module",
+     author: "Qualcomm",
+     methods: &copybit_module_methods
+        }
 };
 
 
@@ -616,36 +616,7 @@ static int msm_copybit(struct copybit_context_t *ctx, unsigned int target)
 
 
 
-static int flush_get_fence_copybit (struct copybit_device_t *dev, int* fd)
-{
-    struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
-    int status = COPYBIT_FAILURE;
-    if (!ctx)
-        return COPYBIT_FAILURE;
-    pthread_mutex_lock(&ctx->wait_cleanup_lock);
-    status = msm_copybit(ctx, ctx->dst[ctx->dst_surface_type]);
-
-    if(LINK_c2dFlush(ctx->dst[ctx->dst_surface_type], &ctx->time_stamp)) {
-        ALOGE("%s: LINK_c2dFlush ERROR", __FUNCTION__);
-        // unlock the mutex and return failure
-        pthread_mutex_unlock(&ctx->wait_cleanup_lock);
-        return COPYBIT_FAILURE;
-    }
-    if(LINK_c2dCreateFenceFD(ctx->dst[ctx->dst_surface_type], ctx->time_stamp,
-                                                                        fd)) {
-        ALOGE("%s: LINK_c2dCreateFenceFD ERROR", __FUNCTION__);
-        status = COPYBIT_FAILURE;
-    }
-    if(status == COPYBIT_SUCCESS) {
-        //signal the wait_thread
-        ctx->wait_timestamp = true;
-        pthread_cond_signal(&ctx->wait_cleanup_cond);
-    }
-    pthread_mutex_unlock(&ctx->wait_cleanup_lock);
-    return status;
-}
-
-static int finish_copybit(struct copybit_device_t *dev)
+static int finish_copybit_internal(struct copybit_device_t *dev)
 {
     struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
     if (!ctx)
@@ -674,7 +645,7 @@ static int finish_copybit(struct copybit_device_t *dev)
     return status;
 }
 
-static int finish_copybit_compat(struct copybit_device_t *dev)
+static int finish_copybit(struct copybit_device_t *dev)
 {
     struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
     if (!ctx)
@@ -683,6 +654,35 @@ static int finish_copybit_compat(struct copybit_device_t *dev)
     int status = COPYBIT_SUCCESS;
     pthread_mutex_lock(&ctx->wait_cleanup_lock);
     status = finish_copybit_internal(dev);
+    pthread_mutex_unlock(&ctx->wait_cleanup_lock);
+    return status;
+}
+
+static int flush_get_fence_copybit (struct copybit_device_t *dev, int* fd)
+{
+    struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
+    int status = COPYBIT_FAILURE;
+    if (!ctx)
+        return COPYBIT_FAILURE;
+    pthread_mutex_lock(&ctx->wait_cleanup_lock);
+    status = msm_copybit(ctx, ctx->dst[ctx->dst_surface_type]);
+
+    if(LINK_c2dFlush(ctx->dst[ctx->dst_surface_type], &ctx->time_stamp)) {
+        ALOGE("%s: LINK_c2dFlush ERROR", __FUNCTION__);
+        // unlock the mutex and return failure
+        pthread_mutex_unlock(&ctx->wait_cleanup_lock);
+        return COPYBIT_FAILURE;
+    }
+    if(LINK_c2dCreateFenceFD(ctx->dst[ctx->dst_surface_type], ctx->time_stamp,
+                                                                        fd)) {
+        ALOGE("%s: LINK_c2dCreateFenceFD ERROR", __FUNCTION__);
+        status = COPYBIT_FAILURE;
+    }
+    if(status == COPYBIT_SUCCESS) {
+        //signal the wait_thread
+        ctx->wait_timestamp = true;
+        pthread_cond_signal(&ctx->wait_cleanup_cond);
+    }
     pthread_mutex_unlock(&ctx->wait_cleanup_lock);
     return status;
 }
@@ -836,7 +836,7 @@ static int set_parameter_copybit(
                 // target transform. Draw all previous surfaces. This will be
                 // changed once we have a new mechanism to send different
                 // target rotations to c2d.
-                finish_copybit(dev);
+                finish_copybit_internal(dev);
             }
             ctx->trg_transform = transform;
         }
@@ -1143,7 +1143,7 @@ static int stretch_copybit_internal(
         // changed the target.
         // Draw the remaining surfaces. We need to do the finish here since
         // we need to free up the surface templates.
-        finish_copybit(dev);
+        finish_copybit_internal(dev);
     }
 
     ctx->dst_surface_type = dst_surface_type;
@@ -1331,7 +1331,7 @@ static int stretch_copybit_internal(
         set_rects(ctx, &(src_surface), dst_rect, src_rect, &clip);
         if (ctx->blit_count == MAX_BLIT_OBJECT_COUNT) {
             ALOGW("Reached end of blit count");
-            finish_copybit(dev);
+            finish_copybit_internal(dev);
         }
         ctx->blit_list[ctx->blit_count] = src_surface;
         ctx->blit_count++;
@@ -1341,7 +1341,7 @@ static int stretch_copybit_internal(
     flags |= (need_temp_dst || need_temp_src) ? FLAGS_TEMP_SRC_DST : 0;
     if (need_to_execute_draw(ctx, (eC2DFlags)flags))
     {
-        finish_copybit(dev);
+        finish_copybit_internal(dev);
     }
 
     if (need_temp_dst) {
@@ -1400,8 +1400,8 @@ static int blit_copybit(
 {
     int status = COPYBIT_SUCCESS;
     struct copybit_context_t* ctx = (struct copybit_context_t*)dev;
-    struct copybit_rect_t dr = { 0, 0, dst->w, dst->h };
-    struct copybit_rect_t sr = { 0, 0, src->w, src->h };
+    struct copybit_rect_t dr = { 0, 0, (int)dst->w, (int)dst->h };
+    struct copybit_rect_t sr = { 0, 0, (int)src->w, (int)src->h };
     pthread_mutex_lock(&ctx->wait_cleanup_lock);
     status = stretch_copybit_internal(dev, dst, src, &dr, &sr, region, false);
     pthread_mutex_unlock(&ctx->wait_cleanup_lock);
@@ -1537,7 +1537,7 @@ static int open_copybit(const struct hw_module_t* module, const char* name,
     ctx->device.get = get;
     ctx->device.blit = blit_copybit;
     ctx->device.stretch = stretch_copybit;
-    ctx->device.finish = finish_copybit_compat;
+    ctx->device.finish = finish_copybit;
     ctx->device.flush_get_fence = flush_get_fence_copybit;
     ctx->device.clear = clear_copybit;
 

@@ -53,6 +53,10 @@ public:
     static bool init(hwc_context_t *ctx);
     static void resetIdleFallBack() { sIdleFallBack = false; }
 
+    void cacheFbHandle(buffer_handle_t handle) { fbHandle = handle; }
+    buffer_handle_t getFbHandle() { 
+        return (mCurrentFrame.fbCount && !mCurrentFrame.needsRedraw) ? fbHandle : 0;
+    }
 protected:
     enum ePipeType {
         MDPCOMP_OV_RGB = ovutils::OV_MDP_PIPE_RGB,
@@ -101,10 +105,8 @@ protected:
     /* cached data */
     struct LayerCache {
         int layerCount;
-        int mdpCount;
-        int cacheCount;
-        int fbZ;
         buffer_handle_t hnd[MAX_NUM_LAYERS];
+        bool isFBComposed[MAX_NUM_LAYERS];
 
         /* c'tor */
         LayerCache();
@@ -112,6 +114,8 @@ protected:
         void reset();
         void cacheAll(hwc_display_contents_1_t* list);
         void updateCounts(const FrameInfo&);
+        bool isSameFrame(const FrameInfo& curFrame,
+                         hwc_display_contents_1_t* list);
     };
 
     /* No of pipes needed for Framebuffer */
@@ -145,8 +149,6 @@ protected:
     /* checks for conditions where YUV layers cannot be bypassed */
     bool isYUVDoable(hwc_context_t* ctx, hwc_layer_1_t* layer);
 
-    /* set up Border fill as Base pipe */
-    static bool setupBasePipe(hwc_context_t*);
     /* Is debug enabled */
     static bool isDebug() { return sDebugLogs ? true : false; };
     /* Is feature enabled */
@@ -156,13 +158,17 @@ protected:
     /* tracks non updating layers*/
     void updateLayerCache(hwc_context_t* ctx, hwc_display_contents_1_t* list);
     /* optimize layers for mdp comp*/
-    void batchLayers();
+    void batchLayers(int batchStart, int batchCount);
     /* gets available pipes for mdp comp */
     int getAvailablePipes(hwc_context_t* ctx);
     /* updates cache map with YUV info */
     void updateYUV(hwc_context_t* ctx, hwc_display_contents_1_t* list);
     bool programMDP(hwc_context_t *ctx, hwc_display_contents_1_t* list);
     bool programYUV(hwc_context_t *ctx, hwc_display_contents_1_t* list);
+    void reset(const int& numAppLayers, hwc_display_contents_1_t* list);
+    bool isSupported(hwc_context_t *ctx, hwc_layer_1_t* layer);
+    void updateNotSupported(hwc_context_t* ctx, hwc_display_contents_1_t* list,
+                            int* batchStart, int* batchCount);
 
     int mDpy;
     static bool sEnabled;
@@ -172,6 +178,7 @@ protected:
     static IdleInvalidator *idleInvalidator;
     struct FrameInfo mCurrentFrame;
     struct LayerCache mCachedFrame;
+    buffer_handle_t fbHandle;
 };
 
 class MDPCompLowRes : public MDPComp {

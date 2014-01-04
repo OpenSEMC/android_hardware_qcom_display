@@ -64,7 +64,11 @@ MDPVersion::MDPVersion()
             if (mdp_version < 100)
                 mdp_version *= 10;
 
-            mRGBPipes = mVGPipes = 2;
+            if (mdp_version >= MDP_V4_2)
+                mRGBPipes = 2;
+            else
+                mRGBPipes = 1;
+            mVGPipes = 2;
 
         } else if (!strncmp(fb_finfo.id, "mdssfb", 6)) {
             mdp_version = MDSS_V5;
